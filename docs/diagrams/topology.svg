@@ -1,0 +1,347 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 1080" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#444"/>
+    </marker>
+    <linearGradient id="infectedGrad" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#ffe5e5"/>
+      <stop offset="1" stop-color="#ffc9c9"/>
+    </linearGradient>
+    <linearGradient id="cleanGrad" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#e3f9e5"/>
+      <stop offset="1" stop-color="#c1ebc4"/>
+    </linearGradient>
+    <linearGradient id="c2Grad" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#fff1d6"/>
+      <stop offset="1" stop-color="#ffd791"/>
+    </linearGradient>
+    <linearGradient id="dcGrad" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#e0ecff"/>
+      <stop offset="1" stop-color="#b8d4ff"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+      <feOffset dx="2" dy="3" result="off"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.25"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1500" height="1080" fill="#fafafa"/>
+
+  <!-- Title -->
+  <text x="750" y="38" text-anchor="middle" font-size="24" font-weight="700" fill="#222">
+    Botnet DDoS Lab — Network Topology (realistic distribution)
+  </text>
+  <text x="750" y="62" text-anchor="middle" font-size="13" fill="#666">
+    45 bots distributed unevenly across 5 ISPs · varied infection rates 15%–88% · 1 clean control · isolated C2
+  </text>
+
+  <!-- ============== HIDDEN C2 SEGMENT (top center) ============== -->
+  <g filter="url(#shadow)">
+    <rect x="560" y="90" width="380" height="130" rx="14" fill="url(#c2Grad)" stroke="#c47a00" stroke-width="2" stroke-dasharray="6,4"/>
+    <text x="750" y="115" text-anchor="middle" font-size="13" font-weight="700" fill="#8a4d00">HIDDEN C2 SEGMENT</text>
+    <text x="750" y="132" text-anchor="middle" font-size="11" fill="#8a4d00">10.0.200.0/24 · ACL: bots only</text>
+
+    <rect x="585" y="148" width="110" height="50" rx="8" fill="#fff" stroke="#8a4d00" stroke-width="1.5"/>
+    <text x="640" y="170" text-anchor="middle" font-size="12" font-weight="600" fill="#222">C2 Server</text>
+    <text x="640" y="187" text-anchor="middle" font-size="10" fill="#666">10.0.200.10</text>
+
+    <rect x="710" y="155" width="55" height="36" rx="6" fill="#fff" stroke="#666"/>
+    <text x="737" y="178" text-anchor="middle" font-size="11" fill="#444">s-c2</text>
+
+    <polygon points="800,148 870,170 870,196 800,218 770,196 770,170" fill="#fff" stroke="#8a4d00" stroke-width="1.5"/>
+    <text x="820" y="180" text-anchor="middle" font-size="11" font-weight="600" fill="#222">R-c2</text>
+    <text x="820" y="194" text-anchor="middle" font-size="9" fill="#666">10.0.200.1</text>
+
+    <line x1="695" y1="173" x2="710" y2="173" stroke="#666" stroke-width="1.5"/>
+    <line x1="765" y1="173" x2="785" y2="173" stroke="#666" stroke-width="1.5"/>
+  </g>
+
+  <!--
+    Reusable layout per ISP (320px wide × 130px tall):
+      header row: ISP name + character
+      infection bar: 200px wide, fill proportional to infection rate
+      counters: BOTS box and NORMAL box (relative widths reflect counts)
+  -->
+
+  <!-- ============== ISP-A · Residential · 14 bots / 6 normal · 70% ============== -->
+  <g filter="url(#shadow)">
+    <rect x="40" y="260" width="320" height="130" rx="14" fill="url(#infectedGrad)" stroke="#b00020" stroke-width="2"/>
+    <text x="200" y="284" text-anchor="middle" font-size="13" font-weight="700" fill="#7a0014">ISP-A · Residential</text>
+    <text x="200" y="300" text-anchor="middle" font-size="10" fill="#7a0014">10.0.1.0/24 · 14 bots + 6 normal · 70% infected</text>
+    <!-- infection bar -->
+    <rect x="100" y="307" width="200" height="8" rx="3" fill="#eee" stroke="#999"/>
+    <rect x="100" y="307" width="140" height="8" rx="3" fill="#b00020"/>
+    <!-- BOTS box (wide, count high) -->
+    <rect x="55" y="324" width="200" height="50" rx="6" fill="#fff" stroke="#b00020"/>
+    <text x="155" y="343" text-anchor="middle" font-size="11" font-weight="700" fill="#7a0014">14 BOTS</text>
+    <text x="155" y="358" text-anchor="middle" font-size="9" fill="#444">botA1 … botA14</text>
+    <text x="155" y="370" text-anchor="middle" font-size="9" fill="#444">10.0.1.21 – .34</text>
+    <!-- NORMAL box (narrow) -->
+    <rect x="265" y="324" width="80" height="50" rx="6" fill="#fff" stroke="#666"/>
+    <text x="305" y="343" text-anchor="middle" font-size="10" font-weight="600" fill="#444">6 NORMAL</text>
+    <text x="305" y="358" text-anchor="middle" font-size="9" fill="#444">normalA1..6</text>
+    <text x="305" y="370" text-anchor="middle" font-size="9" fill="#444">.51 – .56</text>
+  </g>
+  <rect x="155" y="404" width="50" height="30" rx="5" fill="#fff" stroke="#666"/>
+  <text x="180" y="423" text-anchor="middle" font-size="11" fill="#444">s1</text>
+  <polygon points="280,408 340,425 340,438 280,455 250,438 250,425" fill="#fff" stroke="#b00020" stroke-width="1.5"/>
+  <text x="295" y="431" text-anchor="middle" font-size="10" font-weight="600" fill="#222">R1</text>
+  <line x1="200" y1="390" x2="180" y2="404" stroke="#666"/>
+  <line x1="205" y1="419" x2="250" y2="431" stroke="#666"/>
+
+  <!-- ============== ISP-B · Small Business · 2 bots / 11 normal · 15% ============== -->
+  <g filter="url(#shadow)">
+    <rect x="40" y="475" width="320" height="130" rx="14" fill="url(#infectedGrad)" stroke="#b00020" stroke-width="2"/>
+    <text x="200" y="499" text-anchor="middle" font-size="13" font-weight="700" fill="#7a0014">ISP-B · Small Business</text>
+    <text x="200" y="515" text-anchor="middle" font-size="10" fill="#7a0014">10.0.2.0/24 · 2 bots + 11 normal · 15% infected</text>
+    <rect x="100" y="522" width="200" height="8" rx="3" fill="#eee" stroke="#999"/>
+    <rect x="100" y="522" width="30" height="8" rx="3" fill="#b00020"/>
+    <!-- BOTS box (very narrow) -->
+    <rect x="55" y="539" width="70" height="50" rx="6" fill="#fff" stroke="#b00020"/>
+    <text x="90" y="558" text-anchor="middle" font-size="11" font-weight="700" fill="#7a0014">2 BOTS</text>
+    <text x="90" y="572" text-anchor="middle" font-size="9" fill="#444">botB1, botB2</text>
+    <text x="90" y="584" text-anchor="middle" font-size="9" fill="#444">.21 – .22</text>
+    <!-- NORMAL box (wide, dominant) -->
+    <rect x="135" y="539" width="210" height="50" rx="6" fill="#fff" stroke="#666"/>
+    <text x="240" y="558" text-anchor="middle" font-size="11" font-weight="700" fill="#0e4d0e">11 NORMAL</text>
+    <text x="240" y="572" text-anchor="middle" font-size="9" fill="#444">normalB1 … normalB11</text>
+    <text x="240" y="584" text-anchor="middle" font-size="9" fill="#444">10.0.2.51 – .61</text>
+  </g>
+  <rect x="155" y="619" width="50" height="30" rx="5" fill="#fff" stroke="#666"/>
+  <text x="180" y="638" text-anchor="middle" font-size="11" fill="#444">s2</text>
+  <polygon points="280,622 340,640 340,653 280,670 250,653 250,640" fill="#fff" stroke="#b00020" stroke-width="1.5"/>
+  <text x="295" y="646" text-anchor="middle" font-size="10" font-weight="600" fill="#222">R2</text>
+  <line x1="200" y1="605" x2="180" y2="619" stroke="#666"/>
+  <line x1="205" y1="634" x2="250" y2="646" stroke="#666"/>
+
+  <!-- ============== ISP-C · University · 9 bots / 4 normal · 69% ============== -->
+  <g filter="url(#shadow)">
+    <rect x="40" y="690" width="320" height="130" rx="14" fill="url(#infectedGrad)" stroke="#b00020" stroke-width="2"/>
+    <text x="200" y="714" text-anchor="middle" font-size="13" font-weight="700" fill="#7a0014">ISP-C · University</text>
+    <text x="200" y="730" text-anchor="middle" font-size="10" fill="#7a0014">10.0.3.0/24 · 9 bots + 4 normal · 69% infected</text>
+    <rect x="100" y="737" width="200" height="8" rx="3" fill="#eee" stroke="#999"/>
+    <rect x="100" y="737" width="138" height="8" rx="3" fill="#b00020"/>
+    <rect x="55" y="754" width="195" height="50" rx="6" fill="#fff" stroke="#b00020"/>
+    <text x="152" y="773" text-anchor="middle" font-size="11" font-weight="700" fill="#7a0014">9 BOTS</text>
+    <text x="152" y="787" text-anchor="middle" font-size="9" fill="#444">botC1 … botC9</text>
+    <text x="152" y="799" text-anchor="middle" font-size="9" fill="#444">10.0.3.21 – .29</text>
+    <rect x="260" y="754" width="85" height="50" rx="6" fill="#fff" stroke="#666"/>
+    <text x="302" y="773" text-anchor="middle" font-size="10" font-weight="600" fill="#444">4 NORMAL</text>
+    <text x="302" y="787" text-anchor="middle" font-size="9" fill="#444">normalC1..4</text>
+    <text x="302" y="799" text-anchor="middle" font-size="9" fill="#444">.51 – .54</text>
+  </g>
+  <rect x="155" y="834" width="50" height="30" rx="5" fill="#fff" stroke="#666"/>
+  <text x="180" y="853" text-anchor="middle" font-size="11" fill="#444">s3</text>
+  <polygon points="280,837 340,855 340,868 280,885 250,868 250,855" fill="#fff" stroke="#b00020" stroke-width="1.5"/>
+  <text x="295" y="861" text-anchor="middle" font-size="10" font-weight="600" fill="#222">R3</text>
+  <line x1="200" y1="820" x2="180" y2="834" stroke="#666"/>
+  <line x1="205" y1="849" x2="250" y2="861" stroke="#666"/>
+
+  <!-- ============== ISP-D · Mobile · 5 bots / 8 normal · 38% ============== -->
+  <g filter="url(#shadow)">
+    <rect x="1140" y="260" width="320" height="130" rx="14" fill="url(#infectedGrad)" stroke="#b00020" stroke-width="2"/>
+    <text x="1300" y="284" text-anchor="middle" font-size="13" font-weight="700" fill="#7a0014">ISP-D · Mobile / 4G</text>
+    <text x="1300" y="300" text-anchor="middle" font-size="10" fill="#7a0014">10.0.4.0/24 · 5 bots + 8 normal · 38% infected</text>
+    <rect x="1200" y="307" width="200" height="8" rx="3" fill="#eee" stroke="#999"/>
+    <rect x="1200" y="307" width="76" height="8" rx="3" fill="#b00020"/>
+    <rect x="1155" y="324" width="115" height="50" rx="6" fill="#fff" stroke="#b00020"/>
+    <text x="1212" y="343" text-anchor="middle" font-size="11" font-weight="700" fill="#7a0014">5 BOTS</text>
+    <text x="1212" y="358" text-anchor="middle" font-size="9" fill="#444">botD1 … botD5</text>
+    <text x="1212" y="370" text-anchor="middle" font-size="9" fill="#444">10.0.4.21 – .25</text>
+    <rect x="1280" y="324" width="165" height="50" rx="6" fill="#fff" stroke="#666"/>
+    <text x="1362" y="343" text-anchor="middle" font-size="11" font-weight="700" fill="#0e4d0e">8 NORMAL</text>
+    <text x="1362" y="358" text-anchor="middle" font-size="9" fill="#444">normalD1 … normalD8</text>
+    <text x="1362" y="370" text-anchor="middle" font-size="9" fill="#444">10.0.4.51 – .58</text>
+  </g>
+  <rect x="1255" y="404" width="50" height="30" rx="5" fill="#fff" stroke="#666"/>
+  <text x="1280" y="423" text-anchor="middle" font-size="11" fill="#444">s4</text>
+  <polygon points="1180,408 1240,425 1240,438 1180,455 1150,438 1150,425" fill="#fff" stroke="#b00020" stroke-width="1.5"/>
+  <text x="1195" y="431" text-anchor="middle" font-size="10" font-weight="600" fill="#222">R4</text>
+  <line x1="1300" y1="390" x2="1280" y2="404" stroke="#666"/>
+  <line x1="1255" y1="419" x2="1240" y2="431" stroke="#666"/>
+
+  <!-- ============== ISP-E · IoT/Cloud · 15 bots / 2 normal · 88% ============== -->
+  <g filter="url(#shadow)">
+    <rect x="1140" y="475" width="320" height="130" rx="14" fill="url(#infectedGrad)" stroke="#b00020" stroke-width="2"/>
+    <text x="1300" y="499" text-anchor="middle" font-size="13" font-weight="700" fill="#7a0014">ISP-E · IoT / Cloud</text>
+    <text x="1300" y="515" text-anchor="middle" font-size="10" fill="#7a0014">10.0.5.0/24 · 15 bots + 2 normal · 88% infected</text>
+    <rect x="1200" y="522" width="200" height="8" rx="3" fill="#eee" stroke="#999"/>
+    <rect x="1200" y="522" width="176" height="8" rx="3" fill="#b00020"/>
+    <rect x="1155" y="539" width="235" height="50" rx="6" fill="#fff" stroke="#b00020"/>
+    <text x="1272" y="558" text-anchor="middle" font-size="11" font-weight="700" fill="#7a0014">15 BOTS</text>
+    <text x="1272" y="572" text-anchor="middle" font-size="9" fill="#444">botE1 … botE15</text>
+    <text x="1272" y="584" text-anchor="middle" font-size="9" fill="#444">10.0.5.21 – .35</text>
+    <rect x="1400" y="539" width="45" height="50" rx="6" fill="#fff" stroke="#666"/>
+    <text x="1422" y="558" text-anchor="middle" font-size="9" font-weight="700" fill="#444">2 NRM</text>
+    <text x="1422" y="572" text-anchor="middle" font-size="8" fill="#444">norE1,2</text>
+    <text x="1422" y="584" text-anchor="middle" font-size="8" fill="#444">.51,.52</text>
+  </g>
+  <rect x="1255" y="619" width="50" height="30" rx="5" fill="#fff" stroke="#666"/>
+  <text x="1280" y="638" text-anchor="middle" font-size="11" fill="#444">s5</text>
+  <polygon points="1180,622 1240,640 1240,653 1180,670 1150,653 1150,640" fill="#fff" stroke="#b00020" stroke-width="1.5"/>
+  <text x="1195" y="646" text-anchor="middle" font-size="10" font-weight="600" fill="#222">R5</text>
+  <line x1="1300" y1="605" x2="1280" y2="619" stroke="#666"/>
+  <line x1="1255" y1="634" x2="1240" y2="646" stroke="#666"/>
+
+  <!-- ============== ISP-F · Clean Enterprise · 0 bots / 6 normal · 0% ============== -->
+  <g filter="url(#shadow)">
+    <rect x="1140" y="690" width="320" height="130" rx="14" fill="url(#cleanGrad)" stroke="#1f7a1f" stroke-width="2"/>
+    <text x="1300" y="714" text-anchor="middle" font-size="13" font-weight="700" fill="#0e4d0e">ISP-F · Clean Enterprise</text>
+    <text x="1300" y="730" text-anchor="middle" font-size="10" fill="#0e4d0e">10.0.6.0/24 · 0 bots + 6 normal · control group</text>
+    <rect x="1200" y="737" width="200" height="8" rx="3" fill="#eee" stroke="#999"/>
+    <!-- 0% bar — no fill -->
+    <rect x="1180" y="754" width="240" height="50" rx="6" fill="#fff" stroke="#1f7a1f"/>
+    <text x="1300" y="775" text-anchor="middle" font-size="12" font-weight="700" fill="#0e4d0e">6 NORMAL HOSTS</text>
+    <text x="1300" y="790" text-anchor="middle" font-size="9" fill="#444">normalF1 … normalF6 · 10.0.6.51 – .56</text>
+    <text x="1300" y="802" text-anchor="middle" font-size="9" fill="#444">no bots — baseline traffic only</text>
+  </g>
+  <rect x="1255" y="834" width="50" height="30" rx="5" fill="#fff" stroke="#666"/>
+  <text x="1280" y="853" text-anchor="middle" font-size="11" fill="#444">s6</text>
+  <polygon points="1180,837 1240,855 1240,868 1180,885 1150,868 1150,855" fill="#fff" stroke="#1f7a1f" stroke-width="1.5"/>
+  <text x="1195" y="861" text-anchor="middle" font-size="10" font-weight="600" fill="#222">R6</text>
+  <line x1="1300" y1="820" x2="1280" y2="834" stroke="#666"/>
+  <line x1="1255" y1="849" x2="1240" y2="861" stroke="#666"/>
+
+  <!-- ============== R-CORE ============== -->
+  <g filter="url(#shadow)">
+    <circle cx="750" cy="540" r="60" fill="#fff8d6" stroke="#9a7b00" stroke-width="2.5"/>
+    <text x="750" y="535" text-anchor="middle" font-size="14" font-weight="700" fill="#5e4a00">R-core</text>
+    <text x="750" y="555" text-anchor="middle" font-size="10" fill="#5e4a00">backbone</text>
+    <text x="750" y="572" text-anchor="middle" font-size="9" fill="#666">172.16.0.0/16</text>
+  </g>
+
+  <!-- ============== DATACENTER ============== -->
+  <g filter="url(#shadow)">
+    <rect x="450" y="870" width="600" height="170" rx="14" fill="url(#dcGrad)" stroke="#1648a8" stroke-width="2"/>
+    <text x="750" y="896" text-anchor="middle" font-size="14" font-weight="700" fill="#0d2f70">DATACENTER · 10.0.100.0/24</text>
+    <text x="750" y="912" text-anchor="middle" font-size="10" fill="#0d2f70">primary capture point: R-dc uplink</text>
+
+    <polygon points="700,925 770,945 770,960 700,980 670,960 670,945" fill="#fff" stroke="#1648a8" stroke-width="1.5"/>
+    <text x="720" y="955" text-anchor="middle" font-size="11" font-weight="600" fill="#222">R-dc</text>
+    <text x="720" y="970" text-anchor="middle" font-size="9" fill="#666">10.0.100.1</text>
+
+    <rect x="715" y="995" width="60" height="30" rx="5" fill="#fff" stroke="#666"/>
+    <text x="745" y="1014" text-anchor="middle" font-size="11" fill="#444">s-dc</text>
+
+    <rect x="475" y="985" width="100" height="46" rx="6" fill="#fff" stroke="#b00020" stroke-width="1.5"/>
+    <text x="525" y="1002" text-anchor="middle" font-size="11" font-weight="700" fill="#7a0014">TARGET</text>
+    <text x="525" y="1016" text-anchor="middle" font-size="9" fill="#444">10.0.100.10</text>
+    <text x="525" y="1026" text-anchor="middle" font-size="8" fill="#666">HTTP</text>
+
+    <rect x="585" y="985" width="80" height="46" rx="6" fill="#fff" stroke="#666"/>
+    <text x="625" y="1002" text-anchor="middle" font-size="10" font-weight="600" fill="#444">web decoy</text>
+    <text x="625" y="1016" text-anchor="middle" font-size="9" fill="#444">10.0.100.11</text>
+
+    <rect x="800" y="985" width="80" height="46" rx="6" fill="#fff" stroke="#666"/>
+    <text x="840" y="1002" text-anchor="middle" font-size="10" font-weight="600" fill="#444">dns decoy</text>
+    <text x="840" y="1016" text-anchor="middle" font-size="9" fill="#444">10.0.100.12</text>
+
+    <rect x="895" y="985" width="115" height="46" rx="6" fill="#fff" stroke="#0e7a0e" stroke-width="1.5"/>
+    <text x="952" y="1002" text-anchor="middle" font-size="11" font-weight="700" fill="#0e4d0e">MONITOR</text>
+    <text x="952" y="1016" text-anchor="middle" font-size="9" fill="#444">10.0.100.200 · tcpdump</text>
+
+    <line x1="745" y1="995" x2="525" y2="985" stroke="#666"/>
+    <line x1="745" y1="995" x2="625" y2="985" stroke="#666"/>
+    <line x1="745" y1="995" x2="840" y2="985" stroke="#666"/>
+    <line x1="745" y1="995" x2="952" y2="985" stroke="#666"/>
+    <line x1="720" y1="980" x2="745" y2="995" stroke="#666"/>
+  </g>
+
+  <!-- ============== UPLINKS to R-core ============== -->
+  <line x1="340" y1="431" x2="690" y2="540" stroke="#444" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="340" y1="646" x2="690" y2="540" stroke="#444" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="340" y1="861" x2="690" y2="540" stroke="#444" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="1150" y1="431" x2="810" y2="540" stroke="#444" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="1150" y1="646" x2="810" y2="540" stroke="#444" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="1150" y1="861" x2="810" y2="540" stroke="#444" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- C2 to R-core (dashed = isolated channel) -->
+  <line x1="820" y1="218" x2="755" y2="482" stroke="#c47a00" stroke-width="2.5" stroke-dasharray="8,5"/>
+
+  <!-- R-dc to R-core -->
+  <line x1="720" y1="925" x2="750" y2="600" stroke="#1648a8" stroke-width="2.5"/>
+
+  <!-- ============== CAPTURE POINT BADGES ============== -->
+  <g>
+    <circle cx="780" cy="800" r="14" fill="#0e7a0e" stroke="#fff" stroke-width="2"/>
+    <text x="780" y="805" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">1</text>
+    <text x="800" y="805" font-size="10" fill="#0e4d0e" font-weight="600">primary capture · R-dc uplink</text>
+  </g>
+  <g><circle cx="370" cy="431" r="11" fill="#666" stroke="#fff" stroke-width="2"/>
+     <text x="370" y="435" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">2</text></g>
+  <g><circle cx="370" cy="646" r="11" fill="#666" stroke="#fff" stroke-width="2"/>
+     <text x="370" y="650" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">2</text></g>
+  <g><circle cx="370" cy="861" r="11" fill="#666" stroke="#fff" stroke-width="2"/>
+     <text x="370" y="865" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">2</text></g>
+  <g><circle cx="1130" cy="431" r="11" fill="#666" stroke="#fff" stroke-width="2"/>
+     <text x="1130" y="435" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">2</text></g>
+  <g><circle cx="1130" cy="646" r="11" fill="#666" stroke="#fff" stroke-width="2"/>
+     <text x="1130" y="650" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">2</text></g>
+  <g><circle cx="1130" cy="861" r="11" fill="#666" stroke="#fff" stroke-width="2"/>
+     <text x="1130" y="865" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">2</text></g>
+  <g>
+    <circle cx="870" cy="180" r="13" fill="#c47a00" stroke="#fff" stroke-width="2"/>
+    <text x="870" y="184" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">3</text>
+  </g>
+
+  <!-- ============== LEGEND ============== -->
+  <g transform="translate(40, 90)">
+    <rect x="0" y="0" width="240" height="180" rx="8" fill="#fff" stroke="#bbb"/>
+    <text x="120" y="20" text-anchor="middle" font-size="12" font-weight="700" fill="#222">Legend</text>
+
+    <rect x="12" y="32" width="16" height="12" fill="url(#infectedGrad)" stroke="#b00020"/>
+    <text x="36" y="42" font-size="10" fill="#444">Infected ISP (bots present)</text>
+
+    <rect x="12" y="50" width="16" height="12" fill="url(#cleanGrad)" stroke="#1f7a1f"/>
+    <text x="36" y="60" font-size="10" fill="#444">Clean ISP (control group)</text>
+
+    <rect x="12" y="68" width="16" height="12" fill="url(#c2Grad)" stroke="#c47a00" stroke-dasharray="3,2"/>
+    <text x="36" y="78" font-size="10" fill="#444">Hidden C2 segment</text>
+
+    <rect x="12" y="86" width="16" height="12" fill="url(#dcGrad)" stroke="#1648a8"/>
+    <text x="36" y="96" font-size="10" fill="#444">Datacenter (target)</text>
+
+    <rect x="12" y="106" width="120" height="6" rx="2" fill="#eee" stroke="#999"/>
+    <rect x="12" y="106" width="84" height="6" rx="2" fill="#b00020"/>
+    <text x="138" y="112" font-size="10" fill="#444">infection rate bar</text>
+
+    <circle cx="20" cy="131" r="7" fill="#0e7a0e"/>
+    <text x="20" y="135" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">1</text>
+    <text x="36" y="134" font-size="10" fill="#444">Primary capture point</text>
+
+    <circle cx="20" cy="149" r="6" fill="#666"/>
+    <text x="20" y="153" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">2</text>
+    <text x="36" y="152" font-size="10" fill="#444">Per-ISP capture point</text>
+
+    <circle cx="20" cy="167" r="6" fill="#c47a00"/>
+    <text x="20" y="171" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">3</text>
+    <text x="36" y="170" font-size="10" fill="#444">C2 channel capture</text>
+  </g>
+
+  <!-- ============== INVENTORY BOX ============== -->
+  <g transform="translate(1220, 90)">
+    <rect x="0" y="0" width="240" height="180" rx="8" fill="#fff" stroke="#bbb"/>
+    <text x="120" y="20" text-anchor="middle" font-size="12" font-weight="700" fill="#222">Inventory</text>
+    <text x="14" y="42" font-size="10" fill="#444">Bots (45 total, varied)</text>
+    <text x="226" y="42" text-anchor="end" font-size="10" font-weight="700" fill="#7a0014">14·2·9·5·15</text>
+    <text x="14" y="60" font-size="10" fill="#444">Normal hosts</text>
+    <text x="226" y="60" text-anchor="end" font-size="10" font-weight="700" fill="#0e4d0e">37</text>
+    <text x="14" y="78" font-size="10" fill="#444">Routers</text>
+    <text x="226" y="78" text-anchor="end" font-size="10" font-weight="700" fill="#222">8</text>
+    <text x="14" y="96" font-size="10" fill="#444">Switches</text>
+    <text x="226" y="96" text-anchor="end" font-size="10" font-weight="700" fill="#222">8</text>
+    <text x="14" y="114" font-size="10" fill="#444">Servers (target + decoys)</text>
+    <text x="226" y="114" text-anchor="end" font-size="10" font-weight="700" fill="#222">3</text>
+    <text x="14" y="132" font-size="10" fill="#444">Monitor + C2</text>
+    <text x="226" y="132" text-anchor="end" font-size="10" font-weight="700" fill="#222">2</text>
+    <line x1="14" y1="138" x2="226" y2="138" stroke="#bbb"/>
+    <text x="14" y="152" font-size="10" font-weight="700" fill="#222">Total nodes</text>
+    <text x="226" y="152" text-anchor="end" font-size="11" font-weight="700" fill="#222">~99</text>
+    <text x="14" y="170" font-size="9" fill="#888">infection range: 15% – 88%</text>
+  </g>
+
+</svg>
