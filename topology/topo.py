@@ -150,7 +150,9 @@ class BotnetTopo(Topo):
 
         # -- Datacenter -------------------------------------------------
         rdc = self.addHost("Rdc", cls=LinuxRouter, ip=None)
-        sdc = self.addSwitch("sdc")  # avoid dashes in switch names
+        # Explicit DPID: name is non-canonical (no trailing digits), so
+        # Mininet cannot derive one automatically.
+        sdc = self.addSwitch("sdc", dpid="0000000000000007")
         self.addLink(
             sdc, rdc,
             intfName2="Rdc-eth0",
@@ -178,7 +180,7 @@ class BotnetTopo(Topo):
 
         # -- Hidden C2 segment -----------------------------------------
         rc2 = self.addHost("Rc2", cls=LinuxRouter, ip=None)
-        sc2 = self.addSwitch("sc2")
+        sc2 = self.addSwitch("sc2", dpid="0000000000000008")
         self.addLink(
             sc2, rc2,
             intfName2="Rc2-eth0",

@@ -394,6 +394,17 @@ def _resolve_bot_id(arg: Optional[str]) -> str:
     env = os.environ.get("BOT_ID")
     if env:
         return env
+    # Mininet does NOT unshare the UTS namespace, so socket.gethostname()
+    # returns the host VM's name (e.g. "mininet-vm") for every bot, which
+    # would cause every bot to collide on the same C2 dict key. Each
+    # Mininet host *does* have its own network namespace with an interface
+    # named "<hostname>-eth0" -- use that to recover the real identity.
+    try:
+        for iface in sorted(os.listdir("/sys/class/net")):
+            if iface.endswith("-eth0"):
+                return iface[: -len("-eth0")]
+    except OSError:
+        pass
     return socket.gethostname()
 
 
