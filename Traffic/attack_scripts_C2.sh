@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 #
-# Traffic2/attack_scripts.sh
+# Traffic/attack_scripts_C2.sh
 # ============================================================================
 # DDoS attack orchestration driven through the project's actual botnet:
 #
 #     operator -> c2.py (in c2srv ns) -> bot.py (in every bot ns) -> target
 #
-# Unlike Traffic1/attack_scripts.sh (which calls hping3 directly inside each
+# Unlike Traffic/attack_scripts.sh (which calls hping3 directly inside each
 # bot namespace via mnexec), this script uses the real Command-and-Control
 # channel:
 #
@@ -47,12 +47,12 @@
 # privileges, while the Mininet topology from topology/topo.py is up.
 #
 # Usage:
-#     sudo Traffic2/attack_scripts.sh start                  # bring c2 + bots up
-#     sudo Traffic2/attack_scripts.sh <scenario> [duration]  # auto-starts if needed
-#     sudo Traffic2/attack_scripts.sh ping                   # liveness probe to bots
-#     sudo Traffic2/attack_scripts.sh list                   # show scenarios
-#     sudo Traffic2/attack_scripts.sh status                 # show c2 / bot health
-#     sudo Traffic2/attack_scripts.sh stop                   # tear everything down
+#     sudo Traffic/attack_scripts_C2.sh start                  # bring c2 + bots up
+#     sudo Traffic/attack_scripts_C2.sh <scenario> [duration]  # auto-starts if needed
+#     sudo Traffic/attack_scripts_C2.sh ping                   # liveness probe to bots
+#     sudo Traffic/attack_scripts_C2.sh list                   # show scenarios
+#     sudo Traffic/attack_scripts_C2.sh status                 # show c2 / bot health
+#     sudo Traffic/attack_scripts_C2.sh stop                   # tear everything down
 #
 # Default duration = 60 s.
 # ============================================================================
@@ -463,12 +463,12 @@ EOF
 
 print_usage() {
     cat <<EOF
-Usage: sudo Traffic2/attack_scripts.sh start
-       sudo Traffic2/attack_scripts.sh <scenario> [duration_seconds]
-       sudo Traffic2/attack_scripts.sh ping
-       sudo Traffic2/attack_scripts.sh list
-       sudo Traffic2/attack_scripts.sh status
-       sudo Traffic2/attack_scripts.sh stop
+Usage: sudo Traffic/attack_scripts_C2.sh start
+       sudo Traffic/attack_scripts_C2.sh <scenario> [duration_seconds]
+       sudo Traffic/attack_scripts_C2.sh ping
+       sudo Traffic/attack_scripts_C2.sh list
+       sudo Traffic/attack_scripts_C2.sh status
+       sudo Traffic/attack_scripts_C2.sh stop
 EOF
     print_scenarios
     cat <<EOF
@@ -476,12 +476,12 @@ Default duration = ${DEFAULT_DURATION}s.
 
 Run order for a clean experiment:
     1. sudo python3 topology/topo.py                          # pane A
-    2. sudo Traffic2/normal_traffic.sh start                  # pane B
+    2. sudo Traffic/normal_traffic.sh start                  # pane B
     3. (optional) start a capture on Rdc-eth0                 # pane A
-    4. sudo Traffic2/attack_scripts.sh start                  # pane B
-    5. sudo Traffic2/attack_scripts.sh <scenario> <duration>  # pane B
-    6. sudo Traffic2/attack_scripts.sh stop                   # pane B
-    7. sudo Traffic2/normal_traffic.sh stop                   # pane B
+    4. sudo Traffic/attack_scripts_C2.sh start                  # pane B
+    5. sudo Traffic/attack_scripts_C2.sh <scenario> <duration>  # pane B
+    6. sudo Traffic/attack_scripts_C2.sh stop                   # pane B
+    7. sudo Traffic/normal_traffic.sh stop                   # pane B
 EOF
 }
 
