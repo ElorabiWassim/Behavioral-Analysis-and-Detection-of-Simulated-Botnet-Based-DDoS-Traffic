@@ -1,0 +1,13 @@
+{
+  "label": "attack",
+  "attack_driver": "hping3",
+  "scenario": "high",
+  "duration_seconds": 60,
+  "capture_point": "Rdc-eth0",
+  "pcap_filter": "host 10.0.100.10",
+  "target_ip": "10.0.100.10",
+  "normal_traffic": "on",
+  "c2_controlled": false,
+  "pcap_file": "dataset/pcap/attack__hping3__high__60s__normalON__Rdc-eth0__20260502_181546.pcap",
+  "notes": "SYN flood (hping3) scenario=high duration=60s normal=on c2=off"
+}

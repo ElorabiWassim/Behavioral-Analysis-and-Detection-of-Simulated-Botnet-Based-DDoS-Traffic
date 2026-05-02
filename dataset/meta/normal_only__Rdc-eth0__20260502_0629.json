@@ -1,5 +1,6 @@
 {
   "label": "normal",
+  "c2_controlled": false,
   "normal_traffic": "on",
   "scenario": "normal",
   "duration_seconds": 78,
