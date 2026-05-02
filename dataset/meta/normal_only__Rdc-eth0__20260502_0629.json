@@ -1,0 +1,11 @@
+{
+  "label": "normal",
+  "normal_traffic": "on",
+  "scenario": "normal",
+  "duration_seconds": 78,
+  "capture_point": "Rdc-eth0",
+  "pcap_filter": "host 10.0.100.10",
+  "target_ip": "10.0.100.10",
+  "pcap_file": "dataset/pcap/normal_only__Rdc-eth0__20260502_0629.pcap",
+  "notes": "Normal traffic baseline captured while running traffic/normal_traffic.sh (no attack)."
+}

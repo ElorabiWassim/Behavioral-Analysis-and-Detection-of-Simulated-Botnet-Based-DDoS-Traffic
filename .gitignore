@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.pyc
+
+# Large capture artifacts (do not commit)
+dataset/pcap/
+
+# Large tshark packet dumps (intermediate)
+dataset/features/packets/
+dataset/features/*.packets.csv
+
+dataset/features/**/*.packets.csv
+
+# OS/editor
+.DS_Store
+Thumbs.db

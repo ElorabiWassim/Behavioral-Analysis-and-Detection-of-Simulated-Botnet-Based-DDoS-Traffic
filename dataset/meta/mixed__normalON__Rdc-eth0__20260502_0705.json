@@ -1,0 +1,11 @@
+{
+  "label": "mixed",
+  "normal_traffic": "on",
+  "scenario": "mixed",
+  "duration_seconds": 30,
+  "capture_point": "Rdc-eth0",
+  "pcap_filter": "host 10.0.100.10",
+  "target_ip": "10.0.100.10",
+  "pcap_file": "dataset/pcap/mixed__normalON__Rdc-eth0__20260502_0705.pcap",
+  "notes": "Normal background traffic running during mixed scenario run."
+}
