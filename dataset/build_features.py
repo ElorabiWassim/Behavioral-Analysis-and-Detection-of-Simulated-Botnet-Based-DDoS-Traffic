@@ -9,6 +9,13 @@ import pandas as pd
 from pandas.errors import ParserError
 
 
+def _parse_bool(val) -> int:
+    if val is None:
+        return 0
+    s = str(val).strip().lower()
+    return 1 if s in ("1", "true", "yes", "y", "on") else 0
+
+
 def _ensure_dir(path: str) -> None:
     os.makedirs(path, exist_ok=True)
 
@@ -218,6 +225,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                     "scenario": r.get("scenario", ""),
                     "attack_driver": r.get("attack_driver", ""),
                     "normal_traffic": r.get("normal_traffic", ""),
+                    "c2_controlled": _parse_bool(r.get("c2_controlled", "0")),
                     "capture_point": r.get("capture_point", ""),
                     "pcap_file": pcap,
                 }
