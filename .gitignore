@@ -9,7 +9,6 @@ dataset/pcap/
 # Dataset v2 (suggested locations; do not commit large artifacts)
 captures/
 packets/
-dataset/processed/
 
 # Large tshark packet dumps (intermediate)
 dataset/features/packets/
