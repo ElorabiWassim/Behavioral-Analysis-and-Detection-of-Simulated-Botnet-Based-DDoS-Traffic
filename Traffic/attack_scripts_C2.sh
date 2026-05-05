@@ -282,7 +282,8 @@ wait_for_registration() {
     local deadline=$(( $(date +%s) + BOT_REGISTER_TIMEOUT ))
     local seen=0
     while (( $(date +%s) < deadline )); do
-        seen=$(grep -c "bot REGISTER" "$C2_LOG" 2>/dev/null || echo 0)
+        seen=$(grep -c "bot REGISTER" "$C2_LOG" 2>/dev/null)
+        seen=${seen:-0}
         if (( seen >= EXPECTED_BOTS )); then
             log "all $seen bots registered with c2"
             return 0
@@ -428,7 +429,8 @@ cmd_status() {
 
     if [[ -f "$C2_LOG" ]]; then
         local registered
-        registered=$(grep -c "bot REGISTER" "$C2_LOG" 2>/dev/null || echo 0)
+        registered=$(grep -c "bot REGISTER" "$C2_LOG" 2>/dev/null)
+        registered=${registered:-0}
         echo "registered: $registered (cumulative in c2.log)"
     fi
 
