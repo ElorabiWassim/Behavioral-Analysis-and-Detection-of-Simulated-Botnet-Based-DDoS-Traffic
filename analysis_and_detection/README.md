@@ -1,8 +1,22 @@
-# Attack-family classifier (stage 2)
+# Two-stage detector
 
-Predicts the **attack family** of a 1-second traffic window once an
-upstream detector has flagged it as `phase == "attack"`. The output is
-one of:
+The detector is a stacked pair of classifiers, each trained from the
+same windowed CSV produced by `pipeline/pcap_to_ml_windows.py`.
+
+| Stage          | Model file                       | Trainer                       | Predicts                                            |
+|----------------|----------------------------------|-------------------------------|-----------------------------------------------------|
+| **Primary**    | `phase_model.joblib`             | `train_phase.py`              | `phase in {normal, pre_attack, attack}`             |
+| **Secondary**  | `attack_family_model.joblib`     | `train_attack_family.py`      | `attack_family in {tcp, udp, icmp, http, mixed}`    |
+
+The operational value of the **primary** model is the `pre_attack`
+class — it gives the SOC a few seconds of lead time before the flood
+saturates the target. The 10-second pre-attack ramp emitted by
+`Traffic/attack_scripts_C2.sh` (4 / 16 / 36 / 64 / 100 % of peak rate)
+is what makes that label learnable.
+
+The **secondary** model only fires on windows the primary flagged as
+`attack`, and tells the operator *which* family of attack it is so the
+right runbook can be triggered.
 
 | label   | description                              |
 |---------|------------------------------------------|
@@ -12,31 +26,26 @@ one of:
 | `http`  | HTTP `GET /` flood                       |
 | `mixed` | tcp -> udp -> icmp phased run            |
 
-The model is a `RandomForestClassifier` trained on the per-window
-behavioral features produced by `pipeline/pcap_to_ml_windows.py`
-(38 numeric features: protocol counts and ratios, TCP-flag ratios,
-flow / source diversity, C2-channel activity, burstiness, 5 s rolling
-context, past-baseline z-scores).
+There is **no** `post_attack` class: windows after `attack_end` fold
+back into `normal`. The defender goal is *early* detection during
+ramp-up, not forensic decay analysis.
 
 ## Inputs
 
-- `dataset/processed/windows_1s_all.csv` (the union of every per-scenario
-  windows file, also produced by `pcap_to_ml_windows.py`).
-- Only rows where `phase == "attack"` are kept; the model never sees
-  benign / pre-attack / post-attack windows.
+`dataset/processed/windows_1s_all.csv` — the concatenated per-scenario
+windows file produced by `Traffic/collect_dataset.sh`. Each row is a
+1-second window with 38 behavioural features plus metadata + labels.
 
 ## Leakage controls
 
-The CSV ships several columns that trivially encode the label:
+Both trainers drop the columns that trivially encode the label
+(`scenario_id`, `capture_id`, the absolute / relative timestamps,
+`window_duration`, plus `phase` / `attack_family`). The 38 remaining
+columns are pure behavioural features.
 
-- `scenario_id` is literally `"tcp-medium"`, `"http-high"`, ...
-- `capture_id` embeds the same string.
-- `attack_start_time`, `window_start_time`, `relative_time`,
-  `window_duration` either pin a specific capture or are constant.
-
-All of those plus the labels themselves (`phase`, `attack_family`) are
-dropped before training. The 38 remaining columns are pure behavioral
-features, leaving 38 numeric inputs.
+The phase trainer additionally uses `GroupKFold` on `capture_id` so the
+strict cross-validation never lets the model memorise a specific
+capture.
 
 ## Train
 
@@ -44,69 +53,78 @@ From the project root:
 
 ```powershell
 pip install -r analysis_and_detection/requirements.txt
+
+# stage 1 -- phase (normal / pre_attack / attack)
+python analysis_and_detection/train_phase.py
+
+# stage 2 -- attack family (only attack rows)
 python analysis_and_detection/train_attack_family.py
 ```
 
-This will:
+`train_phase.py` writes:
 
-1. Load `dataset/processed/windows_1s_all.csv`, filter to attack-phase
-   rows (5 280 rows on the current dataset).
-2. Run 5-fold `StratifiedKFold` cross-validation (reports
-   accuracy + macro-F1 per fold).
-3. Fit a final model on an 80 / 20 stratified split and write artifacts
-   under `analysis_and_detection/artifacts/`:
-   - `attack_family_rf.joblib` — model + feature column list + class list
-   - `confusion_matrix.png`
-   - `feature_importances.png`
-   - `report.txt`     — text classification report
-   - `metrics.json`   — machine-readable summary
+- `artifacts/phase_model.joblib` — model + feature columns + class list
+- `artifacts/phase_confusion_matrix.png`
+- `artifacts/phase_feature_importances.png`
+- `artifacts/phase_report.txt` / `phase_metrics.json`
 
-Common overrides:
+`train_attack_family.py` writes:
 
-```powershell
-python analysis_and_detection/train_attack_family.py --test-size 0.25 --seed 7
-python analysis_and_detection/train_attack_family.py --data path/to/other.csv
-```
+- `artifacts/attack_family_model.joblib`
+- `artifacts/confusion_matrix.png`
+- `artifacts/feature_importances.png`
+- `artifacts/report.txt` / `metrics.json`
 
-## Predict
-
-Score any `windows.csv` produced by `pcap_to_ml_windows.py`:
+Common overrides on either trainer:
 
 ```powershell
-python analysis_and_detection/predict.py --csv dataset/processed/windows_1s_all.csv --out predictions.csv
+python analysis_and_detection/train_phase.py --model rf --seed 7
+python analysis_and_detection/train_attack_family.py --merge-tcp-http
 ```
 
-The output gets two extra columns:
+## Predict (chained)
 
-- `pred_attack_family` — the predicted family (only for rows the model
-  was asked to score; empty otherwise).
-- `pred_confidence`    — the max class probability for that prediction.
+`predict.py` runs both stages by default: the primary scores every
+window, and the secondary only scores rows the primary flagged as
+`attack`.
 
-By default only rows with `phase == "attack"` are scored; pass
-`--all-rows` to score everything (e.g. when stitching this stage to a
-primary detector that also flags pre/post windows).
+```powershell
+python analysis_and_detection/predict.py `
+    --csv dataset/processed/windows_1s_all.csv `
+    --out predictions.csv
+```
 
-If the input CSV still has a ground-truth `attack_family` column, the
-script also prints the agreement rate as a quick sanity check.
+Output columns added to the CSV:
 
-## Why Random Forest?
+| column                    | meaning                                                   |
+|---------------------------|-----------------------------------------------------------|
+| `pred_phase`              | primary prediction per window                             |
+| `pred_phase_confidence`   | max class probability of the primary classifier           |
+| `pred_attack_family`      | secondary prediction (blank on rows it didn't score)      |
+| `pred_attack_confidence`  | max class probability of the secondary (0 if not scored)  |
 
-Each family has a near-deterministic protocol fingerprint in this
-feature set (`tcp_ratio`, `udp_ratio`, `icmp_ratio`, `syn_ratio`,
-`unique_dst_port_count`, `avg_packet_size`, ...), so a tree-based model
-can carve them apart cleanly without feature scaling. With ~5 k attack
-rows and 5 classes, training takes a few seconds and reliably reaches
-> 0.99 macro-F1 with the leakage columns removed.
+If the input CSV still has ground-truth `phase` / `attack_family`
+columns, the script also prints agreement rates as a sanity check.
 
-## Stitching to a primary detector
+Modes:
 
-In production the pipeline is two stages:
+```powershell
+# default: primary -> secondary on attack rows
+python analysis_and_detection/predict.py --csv windows.csv
 
-1. **Primary detector** (binary or multi-phase): per-window decision of
-   `attack` vs everything else.
-2. **This classifier**: only invoked on windows the primary flagged as
-   `attack`. Output is the family + confidence.
+# bypass the primary; gate the secondary with the dataset's true 'phase'
+python analysis_and_detection/predict.py --csv windows.csv --no-primary
 
-`predict.py` already implements that contract — by default it only
-scores rows with `phase == "attack"`, so you can feed it the primary's
-output unchanged.
+# force the secondary to score every row, ignoring the primary's gate
+python analysis_and_detection/predict.py --csv windows.csv --secondary-all-rows
+```
+
+## Why these models?
+
+- **HistGradientBoosting** (default for both stages): handles the rolling
+  z-score / slope features well, no scaling needed, training in seconds.
+- **RandomForest** (`--model rf`): kept as an alternative for the phase
+  stage and used by default for the family stage. Each attack family has
+  a near-deterministic protocol fingerprint (`tcp_ratio`, `udp_ratio`,
+  `syn_ratio`, `unique_dst_port_count`, ...), which a tree ensemble can
+  carve apart cleanly with no scaling.
