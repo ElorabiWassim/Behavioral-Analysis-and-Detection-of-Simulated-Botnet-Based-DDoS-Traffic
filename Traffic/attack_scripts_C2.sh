@@ -85,6 +85,22 @@ DEFAULT_DURATION=60
 BOT_REGISTER_TIMEOUT=20      # seconds to wait for all bots to register
 GRACE_AFTER_DURATION=4       # extra seconds before declaring the attack done
 
+# --------------------------------------------------------------------------
+# Pre-attack ramp configuration
+# --------------------------------------------------------------------------
+# The ramp is what makes the `pre_attack` ML label learnable: instead of
+# bots flipping from 0 pps to peak rate in a single step (which is a hard
+# on/off boundary indistinguishable from `normal` until the very last
+# second), they gradually scale up. The 5 quadratic steps emit
+# 4 % / 16 % / 36 % / 64 % / 100 % of the scenario's peak rate so the
+# rolling features (`pps_slope_5s`, `bps_zscore`, ...) see a slow build-up
+# rather than a single discontinuity.
+#
+# RAMP_DURATION must equal the labeling pipeline's `--forecast-horizon`
+# so the pre_attack label window aligns with the wire-level ramp.
+RAMP_DURATION=10
+RAMP_STEPS=5
+
 # All 45 bots as created by topology/topo.py (ISP-A..ISP-E: 14+2+9+5+15).
 BOTS_ALL=(
     botA1  botA2  botA3  botA4  botA5  botA6  botA7
@@ -350,6 +366,33 @@ run_phase() {
     sleep "$duration"
 }
 
+# Send a sequence of progressively-faster attack commands so the bots
+# ramp from near-idle up to the peak rate over RAMP_DURATION seconds.
+# Each step uses the standard `attack` command -- bot.py self-stops the
+# previous worker before starting the next, so back-to-back commands
+# produce a clean staircase on the wire.
+#
+# Args: method target peak_rate [port]
+do_ramp() {
+    local method="$1" tgt="$2" peak_rate="$3" port="${4:-}"
+    local step_dur=$(( RAMP_DURATION / RAMP_STEPS ))
+    (( step_dur < 1 )) && step_dur=1
+
+    log "ramp START method=$method peak=${peak_rate}pps/bot dur=${RAMP_DURATION}s steps=${RAMP_STEPS}"
+    local i rate cmd
+    for (( i = 1; i <= RAMP_STEPS; i++ )); do
+        # Quadratic curve: rate(i) = peak * (i/N)^2  ->  4/16/36/64/100 %
+        rate=$(( peak_rate * i * i / (RAMP_STEPS * RAMP_STEPS) ))
+        (( rate < 1 )) && rate=1
+        cmd="attack $method $tgt $step_dur $rate"
+        [[ -n "$port" ]] && cmd="$cmd --port $port"
+        log "  ramp $i/$RAMP_STEPS: ${rate} pps/bot for ${step_dur}s"
+        c2_send "$cmd"
+        sleep "$step_dur"
+    done
+    log "ramp END   peak=${peak_rate}pps/bot reached"
+}
+
 run_scenario() {
     local scenario="$1"
     local duration="${2:-$DEFAULT_DURATION}"
@@ -366,23 +409,25 @@ run_scenario() {
     log "------------------------------------------------------------"
 
     case "$scenario" in
-        tcp-low)     run_phase tcp  "$TARGET" "$duration" 50  80 ;;
-        tcp-medium)  run_phase tcp  "$TARGET" "$duration" 200 80 ;;
-        tcp-high)    run_phase tcp  "$TARGET" "$duration" 800 80 ;;
+        tcp-low)     do_ramp tcp  "$TARGET" 50  80 ; run_phase tcp  "$TARGET" "$duration" 50  80 ;;
+        tcp-medium)  do_ramp tcp  "$TARGET" 200 80 ; run_phase tcp  "$TARGET" "$duration" 200 80 ;;
+        tcp-high)    do_ramp tcp  "$TARGET" 800 80 ; run_phase tcp  "$TARGET" "$duration" 800 80 ;;
 
-        udp-low)     run_phase udp  "$TARGET" "$duration" 100 53 ;;
-        udp-medium)  run_phase udp  "$TARGET" "$duration" 300 53 ;;
-        udp-high)    run_phase udp  "$TARGET" "$duration" 800 53 ;;
+        udp-low)     do_ramp udp  "$TARGET" 100 53 ; run_phase udp  "$TARGET" "$duration" 100 53 ;;
+        udp-medium)  do_ramp udp  "$TARGET" 300 53 ; run_phase udp  "$TARGET" "$duration" 300 53 ;;
+        udp-high)    do_ramp udp  "$TARGET" 800 53 ; run_phase udp  "$TARGET" "$duration" 800 53 ;;
 
-        http-low)    run_phase http "$TARGET" "$duration" 25  80 ;;
-        http-medium) run_phase http "$TARGET" "$duration" 50  80 ;;
-        http-high)   run_phase http "$TARGET" "$duration" 100 80 ;;
+        http-low)    do_ramp http "$TARGET" 25  80 ; run_phase http "$TARGET" "$duration" 25  80 ;;
+        http-medium) do_ramp http "$TARGET" 50  80 ; run_phase http "$TARGET" "$duration" 50  80 ;;
+        http-high)   do_ramp http "$TARGET" 100 80 ; run_phase http "$TARGET" "$duration" 100 80 ;;
 
-        icmp)        run_phase icmp "$TARGET" "$duration" 200 ;;
+        icmp)        do_ramp icmp "$TARGET" 200    ; run_phase icmp "$TARGET" "$duration" 200 ;;
 
         mixed)
             local third=$(( duration / 3 ))
             (( third < 2 )) && third=2
+            # Ramp uses the first protocol of the mixed run (tcp).
+            do_ramp tcp "$TARGET" 200 80
             run_phase tcp  "$TARGET" "$third" 200 80
             run_phase udp  "$TARGET" "$third" 200 53
             run_phase icmp "$TARGET" "$third" 200
@@ -459,6 +504,10 @@ Scenarios (operator commands sent to c2.py over the FIFO):
     http-high     http GET   :80,  100 pps/bot
     icmp          icmp echo  flood, 200 pps/bot
     mixed         tcp -> udp -> icmp, each phase = duration/3 on ALL bots
+
+Every scenario is preceded by a ${RAMP_DURATION}s pre-attack ramp:
+5 quadratic steps at 4/16/36/64/100 % of peak rate so the pre_attack
+ML label aligns with a real wire-level ramp signature.
 
 EOF
 }

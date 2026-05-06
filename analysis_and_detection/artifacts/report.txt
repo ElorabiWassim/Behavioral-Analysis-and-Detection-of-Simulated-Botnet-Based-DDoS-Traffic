@@ -1,0 +1,63 @@
+Attack-family classifier
+========================
+
+data           : D:\CNS\Behavioral-Analysis-and-Detection-of-Simulated-Botnet-Based-DDoS-Traffic\dataset\processed\windows_1s_all.csv
+model          : gbt
+min_packets    : 50
+merge_tcp_http : False
+context_feats  : True
+attack rows    : 3963
+
+Class counts:
+attack_family
+tcp      1081
+udp      1081
+http     1079
+mixed     362
+icmp      360
+
+5-fold StratifiedKFold:
+  accuracy : 0.9508 +/- 0.0128
+  f1_macro : 0.9490 +/- 0.0142
+
+Held-out test (80% / 20%):
+  accuracy : 0.9420
+  f1_macro : 0.9400
+
+Classification report:
+              precision    recall  f1-score   support
+
+        http     0.9381    0.9120    0.9249       216
+        icmp     1.0000    1.0000    1.0000        72
+       mixed     0.9828    0.7808    0.8702        73
+         tcp     0.8686    0.9491    0.9071       216
+         udp     0.9954    1.0000    0.9977       216
+
+    accuracy                         0.9420       793
+   macro avg     0.9570    0.9284    0.9400       793
+weighted avg     0.9445    0.9420    0.9417       793
+
+Confusion matrix (rows=true, cols=pred):
+                tcp       udp      icmp      http     mixed
+       tcp      205         0         0        10         1
+       udp        0       216         0         0         0
+      icmp        0         0        72         0         0
+      http       19         0         0       197         0
+     mixed       12         1         0         3        57
+
+Top-15 feature importances:
+avg_packet_size          0.297783
+flow_count_zscore        0.064383
+burstiness_score         0.058762
+bps_zscore               0.054782
+pps_zscore               0.052758
+syn_ratio                0.023792
+unique_src_zscore        0.012610
+unique_src_port_count    0.012540
+bps_mean_5s              0.012415
+unique_src_mean_5s       0.006204
+bps_slope_5s             0.001111
+pps_mean_5s              0.000648
+packet_count             0.000185
+flow_count_slope_5s      0.000139
+flow_count               0.000139

@@ -1,0 +1,143 @@
+{
+  "data": "D:\\CNS\\Behavioral-Analysis-and-Detection-of-Simulated-Botnet-Based-DDoS-Traffic\\dataset\\processed\\windows_1s_all.csv",
+  "model": "gbt",
+  "min_packets": 50,
+  "merge_tcp_http": false,
+  "context_features": true,
+  "n_attack_rows": 3963,
+  "class_counts": {
+    "tcp": 1081,
+    "udp": 1081,
+    "http": 1079,
+    "mixed": 362,
+    "icmp": 360
+  },
+  "feature_columns": [
+    "packet_count",
+    "byte_count",
+    "pps",
+    "bps",
+    "avg_packet_size",
+    "tcp_packet_count",
+    "udp_packet_count",
+    "icmp_packet_count",
+    "tcp_ratio",
+    "udp_ratio",
+    "icmp_ratio",
+    "syn_count",
+    "ack_count",
+    "rst_count",
+    "syn_ratio",
+    "ack_ratio",
+    "syn_to_ack_ratio",
+    "unique_src_ip_count",
+    "unique_dst_ip_count",
+    "unique_src_port_count",
+    "unique_dst_port_count",
+    "flow_count",
+    "many_to_one_ratio",
+    "c2_packet_count",
+    "c2_flow_count",
+    "bots_contacting_c2_count",
+    "simultaneous_src_count",
+    "burstiness_score",
+    "pps_mean_5s",
+    "bps_mean_5s",
+    "unique_src_mean_5s",
+    "flow_count_mean_5s",
+    "pps_slope_5s",
+    "bps_slope_5s",
+    "unique_src_slope_5s",
+    "flow_count_slope_5s",
+    "pps_zscore",
+    "bps_zscore",
+    "unique_src_zscore",
+    "flow_count_zscore",
+    "tcp_ratio_std_10s",
+    "udp_ratio_std_10s",
+    "icmp_ratio_std_10s",
+    "proto_diversity_10s"
+  ],
+  "cv": {
+    "n_splits": 5,
+    "accuracy_mean": 0.9507897384946565,
+    "accuracy_std": 0.012766748730664272,
+    "accuracy_folds": [
+      0.9457755359394704,
+      0.9684741488020177,
+      0.9583858764186634,
+      0.9356060606060606,
+      0.9457070707070707
+    ],
+    "f1_macro_mean": 0.9490280315651901,
+    "f1_macro_std": 0.014179380782711429,
+    "f1_macro_folds": [
+      0.9470709241944393,
+      0.9677246154359995,
+      0.9586527594270862,
+      0.9335377030531704,
+      0.9381541557152552
+    ]
+  },
+  "test": {
+    "test_size": 0.2,
+    "accuracy": 0.9419924337957125,
+    "f1_macro": 0.9399763627874196,
+    "confusion_matrix": [
+      [
+        205,
+        0,
+        0,
+        10,
+        1
+      ],
+      [
+        0,
+        216,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        72,
+        0,
+        0
+      ],
+      [
+        19,
+        0,
+        0,
+        197,
+        0
+      ],
+      [
+        12,
+        1,
+        0,
+        3,
+        57
+      ]
+    ],
+    "labels": [
+      "tcp",
+      "udp",
+      "icmp",
+      "http",
+      "mixed"
+    ]
+  },
+  "feature_importances_top10": {
+    "avg_packet_size": 0.29778259873089585,
+    "flow_count_zscore": 0.06438300159151789,
+    "burstiness_score": 0.058761644359870524,
+    "bps_zscore": 0.05478242823376449,
+    "pps_zscore": 0.05275775457279408,
+    "syn_ratio": 0.023792364644521058,
+    "unique_src_zscore": 0.012609681039618636,
+    "unique_src_port_count": 0.01253983792684774,
+    "bps_mean_5s": 0.012414600935549136,
+    "unique_src_mean_5s": 0.00620448079275202
+  }
+}

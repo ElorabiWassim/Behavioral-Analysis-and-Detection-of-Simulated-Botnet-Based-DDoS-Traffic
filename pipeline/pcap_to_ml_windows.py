@@ -8,7 +8,8 @@ metadata columns:
     relative_time, attack_start_time
 
 labels:
-    phase, attack_family
+    phase            in {normal, pre_attack, attack}
+    attack_family    in {none, tcp, udp, icmp, http, mixed, c2}
 
 features:
     packet/byte rates, protocol counts/ratios, TCP flag ratios, flow/source
@@ -17,6 +18,15 @@ features:
 
 Only past windows are used for the z-score baseline, so the derived features
 are usable for onset/forecasting experiments without future leakage.
+
+Phase semantics
+---------------
+``pre_attack`` is the ``--forecast-horizon``-second window immediately
+before ``attack_start``; it should align with the ramp emitted by
+``Traffic/attack_scripts_C2.sh`` (see ``RAMP_DURATION`` there). Windows
+*after* the attack ends are labelled ``normal`` (no separate
+``post_attack`` class) because the defender goal is early detection,
+not forensic decay analysis.
 """
 
 from __future__ import annotations
@@ -408,6 +418,15 @@ def _phase(
     attack_duration: float,
     forecast_horizon: float,
 ) -> str:
+    """Three-class phase label: ``normal`` / ``pre_attack`` / ``attack``.
+
+    The post-attack window (after ``attack_end``) is intentionally folded
+    into ``normal`` -- the project goal is *early* detection (catch the
+    attack during ramp-up via ``pre_attack``), not forensic decay
+    analysis. Keeping a distinct ``post_attack`` class would dilute the
+    ``normal`` baseline with rate-dropping windows that have no
+    operational value for a defender.
+    """
     if attack_start is None or attack_duration <= 0:
         return "normal"
     attack_end = attack_start + attack_duration
@@ -415,7 +434,8 @@ def _phase(
         return "attack"
     if window_start < attack_start:
         return "pre_attack" if attack_start - window_start <= forecast_horizon else "normal"
-    return "post_attack"
+    # window_start >= attack_end  ->  back to baseline
+    return "normal"
 
 
 def _base_features(agg: WindowAgg, window_duration: float) -> dict[str, float | int]:

@@ -8,9 +8,9 @@ the direct `hping3` script for onset prediction.
 
 Capture one run as one folder under `captures/<RUN_ID>/`.
 
-Use these three vantage points:
+Use these eight vantage points:
 
-| Capture point | Router/interface | Files |
+| Capture point | Router/interface | File |
 |---|---|---|
 | Datacenter ingress | `Rdc-eth1` | `dc_ingress.pcap` |
 | Per-ISP egress | `R1-eth1` ... `R6-eth1` | `R1_egress.pcap` ... `R6_egress.pcap` |
@@ -21,12 +21,28 @@ If you want the older target-gateway view from `docs/TESTING.md`, capture
 `Rdc-eth0` as an additional file, but keep `Rdc-eth1` as the canonical
 datacenter-ingress capture.
 
-The ML label is `phase`:
+### ML labels (3-class phase, secondary attack_family)
 
-- `normal`: no attack now and not inside the forecast horizon.
-- `pre_attack`: before the attack, within `--forecast-horizon` seconds.
-- `attack`: attack is currently running.
-- `post_attack`: after the attack finished.
+This dataset trains **two stacked models**:
+
+- **Primary detector** -> `phase` in `{normal, pre_attack, attack}`.
+- **Secondary classifier** (only on attack rows) -> `attack_family` in
+  `{tcp, udp, icmp, http, mixed}`.
+
+There is **no** `post_attack` class: windows after `attack_end` fold back
+into `normal`. The defender goal is *early* detection during ramp-up,
+not forensic decay analysis.
+
+### Pre-attack ramp
+
+Every scenario is preceded by a 10 s ramp emitted by
+`Traffic/attack_scripts_C2.sh` (see `RAMP_DURATION` / `RAMP_STEPS`):
+5 quadratic-spaced rate steps at **4 / 16 / 36 / 64 / 100 %** of the
+scenario's peak rate, 2 s each. This makes `pre_attack` a real,
+learnable phase: rolling features (`pps_slope_5s`, `bps_zscore`, ...)
+see a slow build-up rather than a single 0 -> peak step. The
+`--forecast-horizon` passed to `pipeline/pcap_to_ml_windows.py` **must**
+equal `RAMP_DURATION` so the label window aligns with the wire ramp.
 
 ## One-Time WSL Setup
 
@@ -67,9 +83,36 @@ sudo Traffic/normal_traffic.sh start
 sudo Traffic/normal_traffic.sh status
 ```
 
-## Terminal 2: Capture One C2-Driven Attack Run
+## Terminal 2: Run the Whole Dataset (recommended)
 
-Change `SCENARIO` for each run. Valid scenarios:
+`Traffic/collect_dataset.sh` automates the full collection: 11 scenarios
+* 5 repetitions = 55 captures, plus the per-run PCAP -> CSV conversion
+and a final concatenation into `dataset/processed/windows_1s_all.csv`.
+
+From a host shell (not the `mininet>` prompt), with the topology and
+normal-traffic generators already up:
+
+```bash
+cd ~/Behavioral-Analysis-and-Detection-of-Simulated-Botnet-Based-DDoS-Traffic
+chmod +x Traffic/collect_dataset.sh
+sudo Traffic/collect_dataset.sh 2>&1 | tee captures/collect.console.log
+```
+
+Defaults (override via env vars if needed):
+
+| Variable          | Default | Meaning                                |
+|-------------------|--------:|----------------------------------------|
+| `REPS`            |       5 | repetitions per scenario               |
+| `PRE_NORMAL`      |      30 | seconds of normal traffic per run      |
+| `RAMP_DURATION`   |      10 | seconds of ramp (== forecast horizon)  |
+| `ATTACK_DURATION` |      60 | seconds of full-rate attack            |
+| `FLUSH_GRACE`     |       3 | seconds to flush tcpdump after attack  |
+
+Wall-clock budget: ~110 s/run x 55 runs ~ **100 minutes**.
+
+## Manual Single-Run Capture (debugging only)
+
+Valid scenarios:
 
 ```text
 tcp-low tcp-medium tcp-high
@@ -78,64 +121,62 @@ http-low http-medium http-high
 icmp mixed
 ```
 
-Recommended first set:
-
-```text
-udp-low udp-medium udp-high tcp-low tcp-medium tcp-high http-medium icmp mixed
-```
-
-Copy-paste this block for one run:
+Use this block to capture one scenario by hand (the automated script
+above is preferred for full dataset collection):
 
 ```bash
 cd ~/Behavioral-Analysis-and-Detection-of-Simulated-Botnet-Based-DDoS-Traffic
 
 SCENARIO=udp-low
+PRE_NORMAL=30
+RAMP_DURATION=10
 ATTACK_DURATION=60
-PRE_ATTACK_DELAY=25
-POST_ATTACK_DELAY=15
-RUN_ID="c2__${SCENARIO}__${ATTACK_DURATION}s__$(date +%Y%m%d_%H%M%S)"
+FLUSH_GRACE=3
+RUN_ID="c2__${SCENARIO}__${ATTACK_DURATION}s__manual__$(date +%Y%m%d_%H%M%S)"
 OUTDIR="captures/${RUN_ID}"
 mkdir -p "$OUTDIR"
 
 ns_pid() { pgrep -f "mininet:$1$" 2>/dev/null | head -n 1; }
 
-RUN_START_EPOCH=$(date +%s.%N)
-
 sudo mnexec -a "$(ns_pid Rdc)" tcpdump -i Rdc-eth1 -nn -s 0 -U -Z root \
   -w "$OUTDIR/dc_ingress.pcap" 'host 10.0.100.10' &
 echo $! > "$OUTDIR/tcpdump.pids"
-
 sudo mnexec -a "$(ns_pid Rc2)" tcpdump -i Rc2-eth1 -nn -s 0 -U -Z root \
   -w "$OUTDIR/c2_uplink.pcap" '(host 10.0.200.10 or port 6667)' &
 echo $! >> "$OUTDIR/tcpdump.pids"
-
 for r in R1 R2 R3 R4 R5 R6; do
   sudo mnexec -a "$(ns_pid "$r")" tcpdump -i "${r}-eth1" -nn -s 0 -U -Z root \
     -w "$OUTDIR/${r}_egress.pcap" '(host 10.0.100.10 or host 10.0.200.10 or port 6667)' &
   echo $! >> "$OUTDIR/tcpdump.pids"
 done
+sleep 2
 
-sleep 3
 sudo Traffic/attack_scripts_C2.sh start
-sleep "$PRE_ATTACK_DELAY"
+RUN_START_EPOCH=$(date +%s.%N)
+sleep "$PRE_NORMAL"
 
-ATTACK_START_EPOCH=$(date +%s.%N)
+# attack_scripts_C2.sh emits a 10s ramp + ATTACK_DURATION steady-state.
+# attack_start = ramp_start + RAMP_DURATION.
+RAMP_START_EPOCH=$(date +%s.%N)
+ATTACK_START_EPOCH=$(awk -v a="$RAMP_START_EPOCH" -v b="$RAMP_DURATION" 'BEGIN { printf "%.6f\n", a + b }')
 sudo Traffic/attack_scripts_C2.sh "$SCENARIO" "$ATTACK_DURATION"
 
-sleep "$POST_ATTACK_DELAY"
+sleep "$FLUSH_GRACE"
 RUN_END_EPOCH=$(date +%s.%N)
 
 while read -r pid; do sudo kill -2 "$pid" 2>/dev/null || true; done < "$OUTDIR/tcpdump.pids"
-sleep 3
+sleep 2
 sudo pkill -2 tcpdump 2>/dev/null || true
 
 cat > "$OUTDIR/run_meta.env" <<EOF
 RUN_ID=$RUN_ID
 SCENARIO=$SCENARIO
+PRE_NORMAL=$PRE_NORMAL
+RAMP_DURATION=$RAMP_DURATION
 ATTACK_DURATION=$ATTACK_DURATION
-PRE_ATTACK_DELAY=$PRE_ATTACK_DELAY
-POST_ATTACK_DELAY=$POST_ATTACK_DELAY
+FLUSH_GRACE=$FLUSH_GRACE
 RUN_START_EPOCH=$RUN_START_EPOCH
+RAMP_START_EPOCH=$RAMP_START_EPOCH
 ATTACK_START_EPOCH=$ATTACK_START_EPOCH
 RUN_END_EPOCH=$RUN_END_EPOCH
 TARGET_IP=10.0.100.10
@@ -204,7 +245,8 @@ ls -lh "$OUTDIR"/*.pcap
 
 ## Convert PCAPs to the ML CSV
 
-For an attack run:
+For an attack run captured manually (the automated script does this for
+you):
 
 ```bash
 cd ~/Behavioral-Analysis-and-Detection-of-Simulated-Botnet-Based-DDoS-Traffic
@@ -221,7 +263,7 @@ python3 pipeline/pcap_to_ml_windows.py \
   --run-duration "$RUN_DURATION" \
   --attack-start-epoch "$ATTACK_START_EPOCH" \
   --attack-duration "$ATTACK_DURATION" \
-  --forecast-horizon 10
+  --forecast-horizon "$RAMP_DURATION"   # must equal the ramp emitted by attack_scripts_C2.sh
 ```
 
 For a normal-only run:
